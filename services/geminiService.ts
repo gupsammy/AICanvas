@@ -172,6 +172,7 @@ export const generateImageContent = async (options: GenerateOptions): Promise<Ge
 
     const config: any = {
       temperature: temperature,
+      responseModalities: ['TEXT', 'IMAGE'],
       imageConfig: {
           aspectRatio: aspectRatio as any,
       }
