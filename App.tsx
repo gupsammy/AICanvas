@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LayerData, ModelId, Attachment, MediaType, VideoMode, Annotation } from './types';
 import { generateImageContent, generateVideoContent, generateSpeechContent, generateLayerTitle } from './services/geminiService';
+import { saveLayers, loadLayers, saveViewState, loadViewState, saveHistory, loadHistory, clearAllData } from './services/storageService';
 import PromptBar from './components/PromptBar';
 import CanvasLayer from './components/CanvasLayer';
 import Sidebar from './components/Sidebar';
@@ -43,7 +44,8 @@ const App: React.FC = () => {
   const [selectionTarget, setSelectionTarget] = useState<'global' | 'layer' | null>(null);
   const [injectedAttachment, setInjectedAttachment] = useState<Attachment | null>(null);
   const [snapLines, setSnapLines] = useState<{ vertical?: number, horizontal?: number } | null>(null);
-  
+  const [isHydrated, setIsHydrated] = useState(false);
+
   const fileDropRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -82,6 +84,50 @@ const App: React.FC = () => {
   }, [undo, redo, isSelectionMode]);
 
   useEffect(() => { setInjectedAttachment(null); }, [selectedLayerId]);
+
+  // Hydrate state from IndexedDB on mount
+  useEffect(() => {
+    const hydrate = async () => {
+      try {
+        const [savedLayers, savedView, savedHistory] = await Promise.all([
+          loadLayers(),
+          loadViewState(),
+          loadHistory()
+        ]);
+        if (savedLayers) setLayers(savedLayers);
+        if (savedView) {
+          setCanvasOffset(savedView.offset);
+          setScale(savedView.scale);
+        }
+        if (savedHistory) {
+          setHistory(savedHistory.history);
+          setHistoryIndex(savedHistory.index);
+        }
+      } catch (error) {
+        console.error('Failed to hydrate state:', error);
+      }
+      setIsHydrated(true);
+    };
+    hydrate();
+  }, []);
+
+  // Auto-save layers, history, and view state with debounce
+  useEffect(() => {
+    if (!isHydrated) return;
+    const timeoutId = setTimeout(() => {
+      saveLayers(layers);
+      saveHistory(history, historyIndex);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [layers, history, historyIndex, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    const timeoutId = setTimeout(() => {
+      saveViewState(canvasOffset, scale);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [canvasOffset, scale, isHydrated]);
 
   const isColliding = (rect: {x: number, y: number, width: number, height: number}, others: LayerData[]) => {
       const margin = 20; 
@@ -126,13 +172,14 @@ const App: React.FC = () => {
       setIsSelectionMode(false); setSelectionTarget(null);
   };
 
-  const handleClearCanvas = () => {
-      // Simplification: removed confirm dialog to prevent blocking and improve UX
+  const handleClearCanvas = async () => {
+      await clearAllData();
       setLayers([]);
+      setHistory([[]]);
+      setHistoryIndex(0);
       setSelectedLayerId(null);
       setCanvasOffset({ x: 0, y: 0 });
       setScale(1);
-      addToHistory([]);
   };
 
   const handleLayerFocus = (id: string) => {
