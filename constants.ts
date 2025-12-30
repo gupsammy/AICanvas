@@ -38,3 +38,13 @@ export const GROUP_COLORS = [
   '#10b981', // green
   '#f59e0b', // amber
 ];
+
+export const MINIMAP_LAYER_COLORS: Record<string, string> = {
+  image: '#3b82f6',     // Blue
+  video: '#8b5cf6',     // Purple
+  audio: '#10b981',     // Green
+  sticky: '#eab308',    // Yellow
+  group: 'rgba(113, 113, 122, 0.5)', // Gray semi-transparent
+  drawing: '#ec4899',   // Pink
+  text: '#f5f5f5',      // Off-white
+};

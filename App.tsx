@@ -7,6 +7,7 @@ import { generateThumbnail } from './services/thumbnailService';
 import PromptBar from './components/PromptBar';
 import CanvasLayer from './components/CanvasLayer';
 import Sidebar from './components/Sidebar';
+import Minimap from './components/Minimap';
 import { Image as ImageIcon, ZoomIn, ZoomOut, MousePointer2, Undo2, Redo2, StickyNote, BoxSelect, Pencil, Type as TypeIcon, Trash2 } from 'lucide-react';
 import { STICKY_COLORS, GROUP_COLORS } from './constants';
 
@@ -664,7 +665,7 @@ const App: React.FC = () => {
       </div>
 
       {selectedLayerId === null && (
-          <div className="absolute bottom-8 left-0 right-0 px-4 z-50 pointer-events-none transition-all duration-300" style={{ marginRight: isSidebarOpen ? 320 : 0 }}>
+          <div className="absolute bottom-8 left-0 right-0 px-4 z-50 pointer-events-none transition-all duration-300" style={{ marginLeft: isSidebarOpen ? 320 : 0 }}>
              <div className="pointer-events-auto"><PromptBar onSubmit={handleGlobalGenerate} isGenerating={isGenerating} variant="global" attachments={globalAttachments} onAttachmentsChange={setGlobalAttachments} onSelectOnCanvasStart={() => startCanvasSelection('global')} inputRef={promptInputRef} /></div>
           </div>
       )}
@@ -695,6 +696,14 @@ const App: React.FC = () => {
             <div className="text-[10px] text-center font-mono text-gray-500 py-1 border-y border-white/5">{Math.round(scale * 100)}%</div>
             <button onClick={zoomOut} className="p-2 hover:bg-white/10 rounded-md text-gray-300 transition-colors" title="Zoom Out"><ZoomOut size={18} /></button>
       </div>
+
+      <Minimap
+        layers={layers}
+        selectedLayerId={selectedLayerId}
+        canvasOffset={canvasOffset}
+        scale={scale}
+        onViewportChange={setCanvasOffset}
+      />
 
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} layers={layers} selectedLayerId={selectedLayerId} onSelectLayer={setSelectedLayerId} onRenameLayer={renameLayer} onLayerDoubleClick={handleLayerFocus} />
     </div>

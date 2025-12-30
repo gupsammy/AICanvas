@@ -119,16 +119,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, layers, selectedLay
   return (
     <>
       {!isOpen && (
-        <button onClick={onToggle} className="absolute top-1/2 right-0 -translate-y-1/2 z-40 bg-surface border-l border-y border-border p-2 rounded-l-lg text-gray-400 hover:text-white shadow-lg"><ChevronLeft size={20} /></button>
+        <button onClick={onToggle} className="absolute top-1/2 left-0 -translate-y-1/2 z-40 bg-surface border-r border-y border-border p-2 rounded-r-lg text-gray-400 hover:text-white shadow-lg"><ChevronRight size={20} /></button>
       )}
 
-      <div className={`absolute top-0 right-0 h-full bg-surface/95 backdrop-blur-xl border-l border-border transition-all duration-300 z-50 flex flex-col shadow-2xl ${isOpen ? 'w-80 translate-x-0' : 'w-80 translate-x-full'}`}>
+      <div className={`absolute top-0 left-0 h-full bg-surface/95 backdrop-blur-xl border-r border-border transition-all duration-300 z-50 flex flex-col shadow-2xl ${isOpen ? 'w-80 translate-x-0' : 'w-80 -translate-x-full'}`}>
         <div className="flex items-center justify-between p-2 border-b border-border">
           <div className="flex gap-1 p-1 bg-black/20 rounded-lg flex-1">
              <button onClick={() => setActiveTab('layers')} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'layers' ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}><Layers size={14} /> Layers</button>
              <button onClick={() => setActiveTab('properties')} className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'properties' ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}><Info size={14} /> Properties</button>
           </div>
-          <button onClick={onToggle} className="p-2 text-gray-400 hover:text-white"><ChevronRight size={18} /></button>
+          <button onClick={onToggle} className="p-2 text-gray-400 hover:text-white"><ChevronLeft size={18} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
