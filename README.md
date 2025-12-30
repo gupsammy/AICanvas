@@ -23,6 +23,10 @@ An infinite canvas for AI-powered media generation. Create images, videos, and a
 **Prerequisites:** Node.js 18+
 
 ```bash
+# Clone the repository
+git clone https://github.com/gupsammy/AICanvas.git
+cd AICanvas
+
 # Install dependencies
 npm install
 
