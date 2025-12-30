@@ -3,6 +3,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LayerData, ModelId, Attachment, MediaType, VideoMode, Annotation } from './types';
 import { generateImageContent, generateVideoContent, generateSpeechContent, generateLayerTitle } from './services/geminiService';
 import { saveLayers, loadLayers, saveViewState, loadViewState, saveHistory, loadHistory, clearAllData } from './services/storageService';
+import { generateThumbnail } from './services/thumbnailService';
 import PromptBar from './components/PromptBar';
 import CanvasLayer from './components/CanvasLayer';
 import Sidebar from './components/Sidebar';
@@ -276,7 +277,12 @@ const App: React.FC = () => {
                 const [imageRes, genTitle] = await Promise.all([ generateImageContent({ prompt, model, mediaType, referenceImages: allBase64s, aspectRatio: finalAspectRatio, creativity, imageSize }), generateLayerTitle(prompt) ]);
                 result = imageRes; title = genTitle;
             }
-            setLayers(prev => prev.map(l => l.id !== placeholder.id ? l : { ...l, src: result.url, title: title, videoMetadata: result.metadata, generationMetadata: result.generationConfig, isLoading: false, duration: mediaType === 'video' ? parseInt(duration) : undefined }));
+            // Generate thumbnail for images (not videos/audio)
+            let thumbnail: string | undefined;
+            if (mediaType === 'image' && result.url) {
+                try { thumbnail = await generateThumbnail(result.url); } catch (e) { console.warn('Thumbnail generation failed:', e); }
+            }
+            setLayers(prev => prev.map(l => l.id !== placeholder.id ? l : { ...l, src: result.url, thumbnail, title: title, videoMetadata: result.metadata, generationMetadata: result.generationConfig, isLoading: false, duration: mediaType === 'video' ? parseInt(duration) : undefined }));
         } catch (error: any) {
             setLayers(prev => prev.map(l => l.id !== placeholder.id ? l : { ...l, isLoading: false, error: error.message || "Generation failed" }));
         }
@@ -332,7 +338,12 @@ const App: React.FC = () => {
                 const [imageRes, genTitle] = await Promise.all([ generateImageContent({ prompt, model, mediaType, referenceImages: allBase64s, aspectRatio: finalAspectRatio, creativity, imageSize }), generateLayerTitle(prompt) ]);
                 result = imageRes; title = genTitle;
             }
-            setLayers(prev => prev.map(l => l.id !== placeholder.id ? l : { ...l, src: result.url, title: title, videoMetadata: result.metadata, generationMetadata: result.generationConfig, isLoading: false, duration: mediaType === 'video' ? parseInt(duration) : undefined }));
+            // Generate thumbnail for images (not videos/audio)
+            let thumbnail: string | undefined;
+            if (mediaType === 'image' && result.url) {
+                try { thumbnail = await generateThumbnail(result.url); } catch (e) { console.warn('Thumbnail generation failed:', e); }
+            }
+            setLayers(prev => prev.map(l => l.id !== placeholder.id ? l : { ...l, src: result.url, thumbnail, title: title, videoMetadata: result.metadata, generationMetadata: result.generationConfig, isLoading: false, duration: mediaType === 'video' ? parseInt(duration) : undefined }));
             if (requestCount === 1 && idx === 0) setSelectedLayerId(placeholder.id);
         } catch (error: any) { setLayers(prev => prev.map(l => l.id !== placeholder.id ? l : { ...l, isLoading: false, error: error.message || "Generation failed" })); }
     }));
@@ -567,8 +578,12 @@ const App: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (event) => {
             const base64 = event.target?.result as string; const img = new Image();
-            img.onload = () => { let w = img.naturalWidth; let h = img.naturalHeight; const MAX = 400; if (w > MAX || h > MAX) { if (w > h) { h = (h / w) * MAX; w = MAX; } else { w = (w / h) * MAX; h = MAX; } }
-                const newLayer: LayerData = { id: crypto.randomUUID(), type: 'image', x: dropX - (w/2), y: dropY - (h/2), width: w, height: h, src: base64, title: file.name.replace(/\.[^/.]+$/, ""), createdAt: Date.now(), promptUsed: "Uploaded Image" };
+            img.onload = async () => {
+                let w = img.naturalWidth; let h = img.naturalHeight; const MAX = 400; if (w > MAX || h > MAX) { if (w > h) { h = (h / w) * MAX; w = MAX; } else { w = (w / h) * MAX; h = MAX; } }
+                // Generate thumbnail for uploaded image
+                let thumbnail: string | undefined;
+                try { thumbnail = await generateThumbnail(base64); } catch (e) { console.warn('Thumbnail generation failed:', e); }
+                const newLayer: LayerData = { id: crypto.randomUUID(), type: 'image', x: dropX - (w/2), y: dropY - (h/2), width: w, height: h, src: base64, thumbnail, title: file.name.replace(/\.[^/.]+$/, ""), createdAt: Date.now(), promptUsed: "Uploaded Image" };
                 setLayers(prev => { const next = [...prev, newLayer]; addToHistory(next); return next; }); setSelectedLayerId(newLayer.id);
             }; img.src = base64;
         }; reader.readAsDataURL(file);

@@ -1,7 +1,8 @@
 import { LayerData } from '../types';
+import { generateThumbnail } from './thumbnailService';
 
 const DB_NAME = 'gemini-canvas-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const LAYERS_STORE = 'layers';
 const STATE_STORE = 'canvasState';
 
@@ -52,13 +53,40 @@ export async function saveLayers(layers: LayerData[]): Promise<void> {
 export async function loadLayers(): Promise<LayerData[] | null> {
   try {
     const db = await initDB();
-    return new Promise((resolve, reject) => {
+    const layers = await new Promise<LayerData[] | null>((resolve, reject) => {
       const tx = db.transaction(LAYERS_STORE, 'readonly');
       const store = tx.objectStore(LAYERS_STORE);
       const request = store.get('current');
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(request.error);
     });
+
+    if (!layers) return null;
+
+    // Migrate layers without thumbnails (backward compatibility)
+    let needsSave = false;
+    const migratedLayers = await Promise.all(
+      layers.map(async (layer) => {
+        if (layer.type === 'image' && layer.src && !layer.thumbnail) {
+          try {
+            const thumbnail = await generateThumbnail(layer.src);
+            needsSave = true;
+            return { ...layer, thumbnail };
+          } catch (e) {
+            console.warn('Failed to generate thumbnail for layer', layer.id, e);
+            return layer;
+          }
+        }
+        return layer;
+      })
+    );
+
+    // Save migrated layers back if any were updated
+    if (needsSave) {
+      await saveLayers(migratedLayers);
+    }
+
+    return migratedLayers;
   } catch (error) {
     console.error('Failed to load layers:', error);
     return null;

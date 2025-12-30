@@ -166,6 +166,12 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
 
+  // LOD (Level of Detail) state for performance
+  const [fullResLoaded, setFullResLoaded] = useState(!layer.thumbnail); // If no thumbnail, full-res is the default
+  const FULL_RES_THRESHOLD = 400; // Show full-res when rendered width >= 400px
+  const renderedWidth = layer.width * scale;
+  const shouldShowFullRes = renderedWidth >= FULL_RES_THRESHOLD;
+
   // Auto-focus pencil for drawing layers
   useEffect(() => {
       if (layer.type === 'drawing' && isSelected && tool === 'cursor') {
@@ -786,7 +792,37 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
         }}
       >
         {/* Render Layer Content Based on Type */}
-        {layer.type === 'image' && <img src={layer.src} alt={layer.title} className="block bg-[#101012] pattern-grid-lg pointer-events-none w-full h-full object-contain" draggable={false} style={{ transform: `scaleX(${layer.flipX?-1:1}) scaleY(${layer.flipY?-1:1})` }} />}
+        {layer.type === 'image' && (
+          <div className="relative w-full h-full bg-[#101012] pattern-grid-lg">
+            {/* Thumbnail layer (shown when zoomed out) */}
+            {layer.thumbnail && (
+              <img
+                src={layer.thumbnail}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                style={{
+                  transform: `scaleX(${layer.flipX?-1:1}) scaleY(${layer.flipY?-1:1})`,
+                  opacity: (shouldShowFullRes && fullResLoaded) ? 0 : 1,
+                  transition: 'opacity 150ms ease-out'
+                }}
+                draggable={false}
+              />
+            )}
+            {/* Full-res layer (shown when zoomed in or no thumbnail) */}
+            <img
+              src={layer.src}
+              alt={layer.title}
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+              style={{
+                transform: `scaleX(${layer.flipX?-1:1}) scaleY(${layer.flipY?-1:1})`,
+                opacity: (!layer.thumbnail || (shouldShowFullRes && fullResLoaded)) ? 1 : 0,
+                transition: 'opacity 150ms ease-out'
+              }}
+              draggable={false}
+              onLoad={() => setFullResLoaded(true)}
+            />
+          </div>
+        )}
         
         {layer.type === 'video' && (
             <div className="relative w-full h-full bg-black group-hover:bg-[#101012]">
