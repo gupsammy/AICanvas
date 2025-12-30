@@ -703,6 +703,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
+            onWheel={(e) => e.stopPropagation()}
             placeholder={getPlaceholder()}
             className="w-full bg-transparent text-white placeholder-gray-500 resize-none py-2.5 focus:outline-none text-sm custom-scrollbar"
             rows={1}
