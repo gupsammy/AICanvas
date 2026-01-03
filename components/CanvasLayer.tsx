@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { LayerData, Attachment, ModelId, MediaType, VideoMode, Annotation, PromptState } from '../types';
+import { LayerData, Attachment, ModelId, MediaType, VideoMode, Annotation, PromptState, GenerationTask } from '../types';
 import { DEFAULT_MODEL, STICKY_COLORS, GROUP_COLORS } from '../constants';
 import PromptBar from './PromptBar';
 import {
@@ -48,6 +48,8 @@ interface CanvasLayerProps {
   onExtendVideo?: (id: string, prompt: string) => void;
   onReorder: (id: string, action: 'front' | 'back' | 'forward' | 'backward') => void;
   isGenerating: boolean;
+  generationTask?: GenerationTask;
+  onCancelGeneration?: () => void;
   onSelectOnCanvasStart?: () => void;
   injectedAttachment?: Attachment | null;
 }
@@ -94,6 +96,8 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
   onExtendVideo,
   onReorder,
   isGenerating,
+  generationTask,
+  onCancelGeneration,
   onSelectOnCanvasStart,
   injectedAttachment
 }) => {
@@ -786,16 +790,62 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
   const layerAttachment: Attachment = { id: layer.id, file: new File([], "layer.png"), previewUrl: layer.src, mimeType: layer.type === 'video' ? 'video/mp4' : 'image/png', base64: layer.src };
 
   if (layer.isLoading) {
+    const progress = generationTask?.progress || 0;
+    const isVideo = generationTask?.mediaType === 'video';
+    const statusText = isVideo
+        ? (progress > 10 ? `Rendering video... ${Math.round(progress)}%` : 'Starting video generation...')
+        : 'Creating your image...';
+
     return (
-        <div className="absolute bg-surface/50 border border-border/50 rounded-lg flex flex-col items-center justify-center animate-pulse shadow-lg" style={{ left: layer.x, top: layer.y, width: layer.width, height: layer.height, zIndex: isSelected ? 50 : 10 }}>
-            <Loader2 size={32} className="text-primary animate-spin mb-2" /><span className="text-xs text-gray-400 font-medium tracking-wide">Generating...</span>
+        <div className="absolute bg-elevated/90 backdrop-blur-xl border border-border/50 rounded-2xl flex flex-col items-center justify-center shadow-2xl shadow-black/40" style={{ left: layer.x, top: layer.y, width: layer.width, height: layer.height, zIndex: isSelected ? 50 : 10 }}>
+            {/* Animated rings - Warm Ember */}
+            <div className="relative w-16 h-16 mb-4">
+                <div className="absolute inset-0 border-2 border-primary/30 rounded-full animate-ring-expand ring-delay-1" />
+                <div className="absolute inset-2 border-2 border-primary/50 rounded-full animate-ring-expand ring-delay-2" />
+                <div className="absolute inset-4 bg-primary/20 rounded-full animate-ember-pulse" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 size={20} className="text-primary animate-spin" />
+                </div>
+            </div>
+
+            <span className="text-sm font-medium text-text-primary mb-1">{statusText}</span>
+
+            {/* Progress bar for video */}
+            {isVideo && progress > 0 && (
+                <div className="w-3/4 max-w-[200px] h-1.5 bg-surface rounded-full overflow-hidden mt-2 mb-3">
+                    <div
+                        className="h-full bg-gradient-to-r from-primary to-primary-hover rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            )}
+
+            {!isVideo && (
+                <span className="text-xs text-text-secondary animate-pulse">This usually takes 5-10 seconds</span>
+            )}
+
+            {/* Cancel button */}
+            {onCancelGeneration && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onCancelGeneration(); }}
+                    className="mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-border/50 border border-border/50 rounded-lg text-xs text-text-secondary hover:text-text-primary transition-all duration-200"
+                >
+                    <X size={12} />
+                    Cancel
+                </button>
+            )}
         </div>
     );
   }
   if (layer.error) {
     return (
-        <div className="absolute bg-red-900/10 border border-red-500/30 rounded-lg flex flex-col items-center justify-center shadow-lg" style={{ left: layer.x, top: layer.y, width: layer.width, height: layer.height, zIndex: isSelected ? 50 : 10 }}>
-            <AlertCircle size={32} className="text-red-500 mb-2" /><span className="text-xs text-red-400 font-medium tracking-wide px-4 text-center">{layer.error}</span><button onClick={() => onDelete(layer.id)} className="mt-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] px-2 py-1 rounded transition-colors">Dismiss</button>
+        <div className="absolute bg-red-950/50 backdrop-blur-xl border border-red-500/30 rounded-2xl flex flex-col items-center justify-center shadow-2xl shadow-black/40 p-6" style={{ left: layer.x, top: layer.y, width: layer.width, height: layer.height, zIndex: isSelected ? 50 : 10 }}>
+            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center mb-3">
+                <AlertCircle size={24} className="text-red-400" />
+            </div>
+            <span className="text-sm font-medium text-red-300 mb-1">Generation Failed</span>
+            <span className="text-xs text-red-400/80 text-center max-w-[80%] mb-4">{layer.error}</span>
+            <button onClick={() => onDelete(layer.id)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 text-xs rounded-lg transition-colors">Dismiss</button>
         </div>
     );
   }
